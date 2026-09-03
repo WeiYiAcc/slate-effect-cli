@@ -1,2 +1,10 @@
 node_modules
 cliproxyapi/cli-proxy-api
+# celld local state (Dev mode)
+.celld/dev/
+# Node.js
+node_modules/
+package-lock.json
+# OS
+.DS_Store
+Thumbs.db
