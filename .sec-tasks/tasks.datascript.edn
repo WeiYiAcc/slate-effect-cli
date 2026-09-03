@@ -1,0 +1,95 @@
+;; SEC Project Tasks - Datascript/Logseq EDN Format
+;; 可以导入到 Logseq graph 或 datascript DB
+
+[
+
+;; Entity: Project
+{:db/id #db/id[:db.part/user]
+ :project/name "slate-effect-cli"
+ :project/alias "sec"
+ :project/url "https://github.com/WeiYiAcc/slate-effect-cli"
+ :project/architecture "effect-agent-runtime-model"
+ :project/status :active}
+
+;; Entity: Task - sec-run
+{:db/id #db/id[:db.part/user]
+ :task/id :sec-run
+ :task/title "sec run 单次调用"
+ :task/status :done
+ :task/done-at #inst "2024-09-04"
+ :task/provider "CLIProxyAPI (openrouter/openrouter/free)"}
+
+;; Entity: Task - sec-chat
+{:db/id #db/id[:db.part/user]
+ :task/id :sec-chat
+ :task/title "sec chat REPL 会话"
+ :task/status :done
+ :task/done-at #inst "2024-09-04"
+ :task/depends [:sec-session]}
+
+;; Entity: Task - sec-session
+{:db/id #db/id[:db.part/user]
+ :task/id :sec-session
+ :task/title "sec session 持久化"
+ :task/status :done
+ :task/done-at #inst "2024-09-04"
+ :task/path "~/.local/share/sec/sessions/{id}.json"}
+
+;; Entity: Task - sec-serve
+{:db/id #db/id[:db.part/user]
+ :task/id :sec-serve
+ :task/title "sec serve HTTP server"
+ :task/status :todo
+ :task/description "HTTP server with /v1/chat/completions for opencode TUI"}
+
+;; Entity: Task - sec-acp
+{:db/id #db/id[:db.part/user]
+ :task/id :sec-acp
+ :task/title "sec acp ACP 协议"
+ :task/status :todo
+ :task/description "ACP agent mode for multica spawn/serve"}
+
+;; Entity: Task - sec-effect-agent
+{:db/id #db/id[:db.part/user]
+ :task/id :sec-effect-agent
+ :task/title "effect-agent 重构"
+ :task/status :done
+ :task/done-at #inst "2024-09-04"}
+
+;; Entity: Task - sec-tools
+{:db/id #db/id[:db.part/user]
+ :task/id :sec-tools
+ :task/title "工具调用系统"
+ :task/status :planned
+ :task/depends [:sec-effect-agent]}
+
+;; Entity: Task - sec-tool-read
+{:db/id #db/id[:db.part/user]
+ :task/id :sec-tool-read
+ :task/title "read 工具"
+ :task/status :planned
+ :task/depends [:sec-effect-agent]}
+
+;; Entity: Task - sec-tool-bash
+{:db/id #db/id[:db.part/user]
+ :task/id :sec-tool-bash
+ :task/title "bash 工具"
+ :task/status :planned
+ :task/depends [:sec-effect-agent]}
+
+;; Entity: Task - sec-tui
+{:db/id #db/id[:db.part/user]
+ :task/id :sec-tui
+ :task/title "TUI 界面"
+ :task/status :planned
+ :task/depends [:sec-tools]}
+
+;; Entity: Task - sec-multica
+{:db/id #db/id[:db.part/user]
+ :task/id :sec-multica
+ :task/title "multica 集成"
+ :task/status :planned
+ :task/depends [:sec-acp]}
+
+]
+

@@ -1,0 +1,186 @@
+{
+  "project": "slate-effect-cli (sec)",
+  "version": "1.0.0",
+  "tasks": [
+    {
+      "id": "sec-core",
+      "title": "sec 核心功能",
+      "status": "done",
+      "children": [
+        "sec-run",
+        "sec-chat",
+        "sec-session",
+        "sec-serve",
+        "sec-acp"
+      ]
+    },
+    {
+      "id": "sec-run",
+      "title": "sec run 单次调用",
+      "status": "done",
+      "depends": [],
+      "done_at": "2024-09-04"
+    },
+    {
+      "id": "sec-chat",
+      "title": "sec chat REPL 会话",
+      "status": "done",
+      "depends": [
+        "sec-session"
+      ],
+      "done_at": "2024-09-04"
+    },
+    {
+      "id": "sec-session",
+      "title": "sec session 持久化",
+      "status": "done",
+      "depends": [],
+      "done_at": "2024-09-04"
+    },
+    {
+      "id": "sec-serve",
+      "title": "sec serve HTTP server",
+      "status": "todo",
+      "depends": [],
+      "description": "HTTP server with /v1/chat/completions for opencode TUI"
+    },
+    {
+      "id": "sec-acp",
+      "title": "sec acp ACP 协议",
+      "status": "todo",
+      "depends": [],
+      "description": "ACP agent mode for multica spawn/serve"
+    },
+    {
+      "id": "sec-tools",
+      "title": "sec 工具调用",
+      "status": "planned",
+      "depends": [
+        "sec-effect-agent"
+      ],
+      "children": [
+        "sec-tool-read",
+        "sec-tool-bash",
+        "sec-tool-edit",
+        "sec-tool-websearch"
+      ]
+    },
+    {
+      "id": "sec-effect-agent",
+      "title": "effect-agent 模式重构",
+      "status": "done",
+      "depends": [],
+      "done_at": "2024-09-04",
+      "children": [
+        "sec-agent-schema",
+        "sec-agent-tools",
+        "sec-agent-runtime"
+      ]
+    },
+    {
+      "id": "sec-agent-schema",
+      "title": "Agent Schema 定义",
+      "status": "done",
+      "depends": [],
+      "done_at": "2024-09-04"
+    },
+    {
+      "id": "sec-agent-tools",
+      "title": "Agent Tools 实现",
+      "status": "planned",
+      "depends": [],
+      "description": "Tool.make + Toolkit 组合"
+    },
+    {
+      "id": "sec-agent-runtime",
+      "title": "Agent Runtime 集成",
+      "status": "done",
+      "depends": [],
+      "done_at": "2024-09-04"
+    },
+    {
+      "id": "sec-tool-read",
+      "title": "read 工具",
+      "status": "planned",
+      "depends": [
+        "sec-effect-agent"
+      ],
+      "description": "读取文件内容"
+    },
+    {
+      "id": "sec-tool-bash",
+      "title": "bash 工具",
+      "status": "planned",
+      "depends": [
+        "sec-effect-agent"
+      ],
+      "description": "执行 bash 命令"
+    },
+    {
+      "id": "sec-tool-edit",
+      "title": "edit 工具",
+      "status": "planned",
+      "depends": [
+        "sec-tool-read"
+      ],
+      "description": "编辑文件"
+    },
+    {
+      "id": "sec-tool-websearch",
+      "title": "websearch 工具",
+      "status": "planned",
+      "depends": [],
+      "description": "网页搜索"
+    },
+    {
+      "id": "sec-tui",
+      "title": "sec TUI 界面",
+      "status": "planned",
+      "depends": [
+        "sec-tools"
+      ],
+      "description": "参考 pi-tui 实现 TUI"
+    },
+    {
+      "id": "sec-multica",
+      "title": "sec-multica 集成",
+      "status": "planned",
+      "depends": [
+        "sec-acp"
+      ],
+      "description": "multica shim for claude protocol"
+    },
+    {
+      "id": "sec-docs",
+      "title": "sec 文档",
+      "status": "in_progress",
+      "depends": [],
+      "children": [
+        "sec-docs-usage",
+        "sec-docs-api",
+        "sec-docs-arch"
+      ]
+    },
+    {
+      "id": "sec-docs-usage",
+      "title": "使用文档",
+      "status": "done",
+      "depends": [],
+      "done_at": "2024-09-04"
+    },
+    {
+      "id": "sec-docs-api",
+      "title": "API 文档",
+      "status": "todo",
+      "depends": [],
+      "description": "OpenAI compatible API docs"
+    },
+    {
+      "id": "sec-docs-arch",
+      "title": "架构文档",
+      "status": "todo",
+      "depends": [],
+      "description": "Architecture docs"
+    }
+  ]
+}
