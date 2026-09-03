@@ -1,40 +1,186 @@
 /**
- * slate-effect-cli (sec) - Minimal AI CLI with sessions
+ * sec - Effect-native AI CLI using Effect Agent framework
  * 
- * Commands:
- *   sec run <prompt>       - Single AI call
- *   sec chat [--session ID] - REPL chat (with session persistence)
- *   sec acp                - ACP agent mode
- *   sec serve              - HTTP server
- *   sec models             - List models
- *   sec session <action>   - Session management
- *     new [title]          - Create new session
- *     list                 - List all sessions
- *     show <id>            - Show session details
- *     rm <id>              - Delete session
+ * 基于 effect-agent 的 schema-first runtime model 重写
+ * 参考: effect-agent/packages/testing/src/fixtures/travel-planner/definition.ts
  */
 
-import { getFreeModelsConfig, selectFreeModel, chatCompletion } from "./providers/cliproxyapi.ts";
-import { Effect } from "effect";
+import { Effect, Schema, Context, Layer } from "effect";
+import { FetchHttpClient } from "effect/unstable/http";
+import { Agent, AgentPolicy, AgentRuntime, ThreadHistory, IdGenerator } from "effect-agent";
+import { Tool, Toolkit } from "effect/unstable/ai";
+import { OpenAiClient, OpenAiLanguageModel } from "@effect/ai-openai";
 import * as fs from "fs";
 import * as path from "path";
+import * as readline from "readline";
 import * as os from "os";
 
-// Session management
-const SESSION_DIR = path.join(os.homedir(), ".local", "share", "sec", "sessions");
-const SESSION_FILE = (id: string) => path.join(SESSION_DIR, `${id}.json`);
+// =============================================================================
+// 1. Schema 定义
+// =============================================================================
 
-interface SessionMessage {
-  role: "user" | "assistant" | "system";
-  content: string;
-}
+/** 用户消息 */
+export class UserMessage extends Schema.Class<UserMessage>("UserMessage")({
+  content: Schema.String,
+}) {}
+
+/** AI 回复 */
+export class AiResponse extends Schema.Class<AiResponse>("AiResponse")({
+  response: Schema.String,
+}) {}
+
+/** Read 工具参数 */
+export class ReadParams extends Schema.Class<ReadParams>("ReadParams")({
+  path: Schema.String,
+  offset: Schema.Int.check(Schema.isNonNegative).pipe(Schema.optional),
+  limit: Schema.Int.check(Schema.isPositive).pipe(Schema.optional),
+}) {}
+
+/** Read 工具成功结果 */
+export class ReadSuccess extends Schema.Class<ReadSuccess>("ReadSuccess")({
+  content: Schema.String,
+}) {}
+
+/** Read 工具失败 */
+export class ReadError extends Schema.TaggedError<ReadError>()("ReadError", {
+  message: Schema.String,
+}) {}
+
+/** Bash 工具参数 */
+export class BashParams extends Schema.Class<BashParams>("BashParams")({
+  command: Schema.String,
+  cwd: Schema.String.pipe(Schema.optional),
+}) {}
+
+/** Bash 工具成功结果 */
+export class BashSuccess extends Schema.Class<BashSuccess>("BashSuccess")({
+  stdout: Schema.String,
+  stderr: Schema.String,
+  exitCode: Schema.Int,
+}) {}
+
+/** Bash 工具失败 */
+export class BashError extends Schema.TaggedError<BashError>()("BashError", {
+  message: Schema.String,
+}) {}
+
+// =============================================================================
+// 2. Tool 定义 (使用 Tool.make)
+// =============================================================================
+
+export const ReadTool = Tool.make("read", {
+  description: "Read file contents",
+  parameters: ReadParams,
+  success: ReadSuccess,
+  failure: ReadError,
+  failureMode: "error",
+});
+
+export const BashTool = Tool.make("bash", {
+  description: "Execute bash command",
+  parameters: BashParams,
+  success: BashSuccess,
+  failure: BashError,
+  failureMode: "error",
+});
+
+// =============================================================================
+// 3. Toolkit 组合
+// =============================================================================
+
+export const SecToolkit = Toolkit.make(ReadTool, BashTool);
+
+// =============================================================================
+// 4. Toolkit Layer (工具实现)
+// =============================================================================
+
+export const SecToolkitLayer = SecToolkit.toLayer({
+  read: ({ path: filePath, offset, limit }) =>
+    Effect.gen(function* () {
+      try {
+        const content = fs.readFileSync(filePath, "utf-8");
+        const lines = content.split("\n");
+        const start = offset ?? 0;
+        const end = limit ? start + limit : lines.length;
+        return {
+          content: lines.slice(start, end).join("\n"),
+        };
+      } catch (e) {
+        return yield* Effect.fail(new ReadError({ 
+          message: e instanceof Error ? e.message : String(e) 
+        }));
+      }
+    }),
+  
+
+  bash: ({ command, cwd }) =>
+    Effect.promise(() =>
+      (async () => {
+        try {
+          const result = Bun.spawn({
+            cmd: ["bash", "-c", command],
+            cwd: cwd ?? os.homedir(),
+          });
+          const stdout = await new Response(result.stdout).text();
+          const stderr = await new Response(result.stderr).text();
+          return {
+            stdout,
+            stderr,
+            exitCode: result.exitCode,
+          };
+        } catch (e) {
+          throw new BashError({ 
+            message: e instanceof Error ? e.message : String(e) 
+          });
+        }
+      })()
+    ),
+
+});
+
+// =============================================================================
+// 5. Agent 定义
+// =============================================================================
+
+export const SecAgent = Agent.make("sec", {
+  input: UserMessage,
+  output: AiResponse,
+  instructions: ({ content }) =>
+    Effect.succeed(`You are sec, a helpful AI assistant. Respond to: ${content}`),
+  toolkit: Toolkit.empty,
+  policy: AgentPolicy.make({
+    maxTurns: 2,
+    maxToolCalls: 1,
+    maxDuration: "30 seconds",
+    toolConcurrency: 1,
+  }),
+  description: "A helpful AI assistant.",
+});
+
+// =============================================================================
+// 6. CLIProxyAPI Provider
+// =============================================================================
+
+import { Redacted } from "effect";
+
+const CLI_PROXY_CONFIG = {
+  apiKey: Redacted.make("ak-local-cpa"),
+  baseUrl: "http://127.0.0.1:8317",
+  model: "openrouter/openrouter/free",
+};
+
+// =============================================================================
+// 7. Session 管理
+// =============================================================================
+
+const SESSION_DIR = path.join(os.homedir(), ".local", "share", "sec", "sessions");
 
 interface Session {
   id: string;
   title: string;
   created_at: string;
   updated_at: string;
-  messages: SessionMessage[];
+  messages: Array<{ role: string; content: string }>;
 }
 
 function ensureSessionDir(): void {
@@ -47,26 +193,9 @@ function generateSessionId(): string {
   return "ses_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
-function createSession(title?: string): Session {
-  ensureSessionDir();
-  const id = generateSessionId();
-  const now = new Date().toISOString();
-  const session: Session = {
-    id,
-    title: title || "New Session",
-    created_at: now,
-    updated_at: now,
-    messages: []
-  };
-  saveSession(session);
-  return session;
-}
-
 function loadSession(id: string): Session | null {
-  const file = SESSION_FILE(id);
-  if (!fs.existsSync(file)) {
-    return null;
-  }
+  const file = path.join(SESSION_DIR, `${id}.json`);
+  if (!fs.existsSync(file)) return null;
   try {
     return JSON.parse(fs.readFileSync(file, "utf-8"));
   } catch {
@@ -77,76 +206,62 @@ function loadSession(id: string): Session | null {
 function saveSession(session: Session): void {
   ensureSessionDir();
   session.updated_at = new Date().toISOString();
-  fs.writeFileSync(SESSION_FILE(session.id), JSON.stringify(session, null, 2));
+  const file = path.join(SESSION_DIR, `${session.id}.json`);
+  fs.writeFileSync(file, JSON.stringify(session, null, 2));
 }
 
-function listSessions(): Session[] {
-  ensureSessionDir();
-  const files = fs.readdirSync(SESSION_DIR).filter(f => f.endsWith(".json"));
-  const sessions: Session[] = [];
-  for (const f of files) {
-    try {
-      const session: Session = JSON.parse(fs.readFileSync(path.join(SESSION_DIR, f), "utf-8"));
-      sessions.push(session);
-    } catch {}
-  }
-  // Sort by updated_at descending
-  sessions.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-  return sessions;
-}
+// =============================================================================
+// 8. 运行 Agent
+// =============================================================================
 
-function deleteSession(id: string): boolean {
-  const file = SESSION_FILE(id);
-  if (fs.existsSync(file)) {
-    fs.unlinkSync(file);
-    return true;
-  }
-  return false;
-}
-
-// AI call
-async function aiCall(messages: SessionMessage[]): Promise<string> {
-  const config = getFreeModelsConfig();
-  const selection = await Effect.runPromise(selectFreeModel);
-  const response = await Effect.runPromise(
-    chatCompletion(config, selection.modelId, messages, {
-      temperature: 0.7,
-      maxTokens: 8192
-    })
+async function runSecAgent(message: string): Promise<string> {
+  const program = Effect.gen(function* () {
+    // 运行 agent
+    const result = yield* AgentRuntime.run(SecAgent, { content: message });
+    return result.output.response;
+  }).pipe(
+    // 提供模型
+    Effect.provide(
+      OpenAiLanguageModel.model(CLI_PROXY_CONFIG.model)
+    ),
+    // 提供 client
+    Effect.provide(
+      OpenAiClient.layer({
+        apiKey: CLI_PROXY_CONFIG.apiKey,
+        apiUrl: `${CLI_PROXY_CONFIG.baseUrl}/v1`,
+      })
+    ),
+    // 提供历史
+    Effect.provide(ThreadHistory.layerTransient),
+    // 提供 HTTP 客户端
+    Effect.provide(FetchHttpClient.layer),
+    // 提供 ID 生成器
+    Effect.provide(IdGenerator.layer),
   );
-  return response;
+
+  return Effect.runPromise(program);
 }
+
+// =============================================================================
+// 9. CLI 入口
+// =============================================================================
 
 function printHelp(): void {
-  console.log(`sec - Minimal AI CLI
+  console.log(`sec - Effect-native AI CLI
 
 Usage:
   sec run <prompt>            Single AI call
-  sec chat [--session ID]    REPL chat session
-  sec acp                     ACP agent mode
-  sec serve [--port N]        HTTP server
-  sec models                  List available models
+  sec chat [--session ID]     REPL chat session
   sec session new [title]     Create new session
   sec session list            List all sessions
   sec session show <id>       Show session details
   sec session rm <id>         Delete session
-
-Options:
-  --help, -h         Show this help
-  --version, -v       Show version
 `);
-}
-
-function printVersion(): void {
-  console.log("sec v1.0.0");
 }
 
 async function runSingleCall(prompt: string): Promise<void> {
   try {
-    const response = await aiCall([
-      { role: "system", content: "You are a helpful assistant." },
-      { role: "user", content: prompt }
-    ]);
+    const response = await runSecAgent(prompt);
     console.log(response);
   } catch (err) {
     console.error("Error:", err);
@@ -155,139 +270,114 @@ async function runSingleCall(prompt: string): Promise<void> {
 }
 
 async function runChat(sessionId?: string): Promise<void> {
-  const readline = await import("readline");
-  
-  // Load or create session
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    prompt: "sec> ",
+  });
+
   let session: Session | null = null;
   if (sessionId) {
     session = loadSession(sessionId);
     if (!session) {
-      console.error(`Session ${sessionId} not found. Creating new one.`);
-      session = createSession();
+      console.error(`Session ${sessionId} not found`);
+      process.exit(1);
     }
   } else {
-    session = createSession();
+    ensureSessionDir();
+    const id = generateSessionId();
+    session = {
+      id,
+      title: "New Session",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      messages: [],
+    };
   }
-  
-  console.log(`sec chat - Session: ${session.id} - ${session.title}`);
-  console.log(`Messages: ${session.messages.length} | Type 'quit' to exit\n`);
-  
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    prompt: "sec> "
-  });
-  
-  rl.prompt();
-  
-  rl.on("line", async (input: string) => {
+
+  console.log(`sec chat - Session: ${session.id}\n`);
+
+  const processLine = (input: string) => {
     const line = input.trim();
-    
-    if (!line) {
-      rl.prompt();
-      return;
-    }
-    
-    if (line === "quit" || line === "exit") {
+    if (!line || line === "quit" || line === "exit") {
       saveSession(session!);
-      console.log(`\nSession saved: ${session!.id}`);
       process.exit(0);
     }
-    
-    if (line === "clear") {
-      console.clear();
-      rl.prompt();
-      return;
-    }
-    
-    // Add user message
+
     session!.messages.push({ role: "user", content: line });
-    
-    // Get AI response
-    try {
-      const response = await aiCall(session!.messages);
-      session!.messages.push({ role: "assistant", content: response });
-      
-      // Auto-save after each exchange
-      saveSession(session!);
-      
-      console.log(response);
-    } catch (err) {
-      console.error("Error:", err);
-    }
-    
-    rl.prompt();
-  });
-  
-  rl.on("close", () => {
     saveSession(session!);
-    console.log(`\nSession saved: ${session!.id}`);
-    process.exit(0);
-  });
+
+    runSecAgent(line)
+      .then((response) => {
+        session!.messages.push({ role: "assistant", content: response });
+        saveSession(session!);
+        console.log(response);
+      })
+      .catch((err) => {
+        console.error("Error:", err.message);
+      })
+      .finally(() => {
+        rl.prompt();
+      });
+  };
+
+  rl.on("line", processLine);
+  rl.prompt();
 }
 
-async function runSession(action: string, args: string[]): Promise<void> {
+async function runSessionCommand(action: string, args: string[]): Promise<void> {
   switch (action) {
     case "new": {
+      ensureSessionDir();
+      const id = generateSessionId();
       const title = args.join(" ") || "New Session";
-      const session = createSession(title);
-      console.log(`Created: ${session.id}`);
-      console.log(`Title: ${session.title}`);
-      console.log(`Path: ${SESSION_FILE(session.id)}`);
+      const session: Session = {
+        id,
+        title,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        messages: [],
+      };
+      saveSession(session);
+      console.log(`Created: ${id}`);
       break;
     }
-    
     case "list": {
-      const sessions = listSessions();
-      if (sessions.length === 0) {
-        console.log("No sessions found.");
+      ensureSessionDir();
+      const files = fs.readdirSync(SESSION_DIR).filter(f => f.endsWith(".json"));
+      if (files.length === 0) {
+        console.log("No sessions.");
         return;
       }
-      console.log("ID                   | Title              | Updated             | Msgs");
-      console.log("-------------------- | ------------------ | ------------------- | ----");
-      for (const s of sessions) {
-        const updated = s.updated_at.slice(0, 19).replace("T", " ");
-        console.log(
-          s.id.padEnd(20) + " | " +
-          s.title.slice(0, 18).padEnd(18) + " | " +
-          updated + " | " +
-          s.messages.length.toString()
-        );
+      console.log("ID                   | Title              | Updated");
+      console.log("-------------------- | ------------------ | -------------------");
+      for (const f of files) {
+        try {
+          const s: Session = JSON.parse(fs.readFileSync(path.join(SESSION_DIR, f), "utf-8"));
+          const updated = s.updated_at.slice(0, 19).replace("T", " ");
+          console.log(s.id.padEnd(20) + " | " + s.title.slice(0, 18).padEnd(18) + " | " + updated);
+        } catch {}
       }
       break;
     }
-    
     case "show": {
       const id = args[0];
-      if (!id) {
-        console.error("Usage: sec session show <id>");
-        process.exit(1);
-      }
-      const session = loadSession(id);
-      if (!session) {
-        console.error(`Session not found: ${id}`);
-        process.exit(1);
-      }
-      console.log(`Session: ${session.id}`);
-      console.log(`Title: ${session.title}`);
-      console.log(`Created: ${session.created_at}`);
-      console.log(`Updated: ${session.updated_at}`);
-      console.log(`Messages: ${session.messages.length}\n`);
-      for (const m of session.messages) {
-        const role = m.role === "user" ? "User" : "AI";
-        console.log(`[${role}] ${m.content}\n`);
+      if (!id) { console.error("Usage: sec session show <id>"); process.exit(1); }
+      const s = loadSession(id);
+      if (!s) { console.error(`Session not found: ${id}`); process.exit(1); }
+      console.log(`Session: ${s.id}\nTitle: ${s.title}\n`);
+      for (const m of s.messages) {
+        console.log(`[${m.role}] ${m.content}\n`);
       }
       break;
     }
-    
     case "rm":
     case "delete": {
       const id = args[0];
-      if (!id) {
-        console.error("Usage: sec session rm <id>");
-        process.exit(1);
-      }
-      if (deleteSession(id)) {
+      if (!id) { console.error("Usage: sec session rm <id>"); process.exit(1); }
+      const file = path.join(SESSION_DIR, `${id}.json`);
+      if (fs.existsSync(file)) {
+        fs.unlinkSync(file);
         console.log(`Deleted: ${id}`);
       } else {
         console.error(`Session not found: ${id}`);
@@ -295,103 +385,43 @@ async function runSession(action: string, args: string[]): Promise<void> {
       }
       break;
     }
-    
     default:
-      console.error(`Unknown session action: ${action}`);
-      console.error("Available: new, list, show, rm");
+      console.error(`Unknown action: ${action}`);
       process.exit(1);
-  }
-}
-
-async function runModels(): Promise<void> {
-  try {
-    const config = getFreeModelsConfig();
-    console.log("Available models:");
-    console.log(`  Provider: ${config.providerName}`);
-    console.log(`  Free models: ${config.freeModels.join(", ")}`);
-    console.log(`  Default: openrouter/openrouter/free`);
-  } catch (err) {
-    console.error("Error:", err);
-    process.exit(1);
   }
 }
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
-  
+
   if (argv.length === 0 || argv[0] === "--help" || argv[0] === "-h") {
     printHelp();
     return;
   }
-  
-  if (argv[0] === "--version" || argv[0] === "-v") {
-    printVersion();
-    return;
-  }
-  
+
   const command = argv[0];
-  
+
   switch (command) {
     case "run": {
       const prompt = argv.slice(1).join(" ");
-      if (!prompt) {
-        console.error("Error: no prompt");
-        process.exit(1);
-      }
+      if (!prompt) { console.error("Error: no prompt"); process.exit(1); }
       await runSingleCall(prompt);
       break;
     }
-    
     case "chat": {
-      // Parse --session flag
-      let sessionId: string | undefined;
-      const sessionIdx = argv.indexOf("--session");
-      if (sessionIdx !== -1 && argv[sessionIdx + 1]) {
-        sessionId = argv[sessionIdx + 1];
-      }
-      const sIdx = argv.indexOf("-s");
-      if (sIdx !== -1 && argv[sIdx + 1]) {
-        sessionId = argv[sIdx + 1];
-      }
+      const sIdx = argv.indexOf("--session");
+      const sessionId = sIdx !== -1 ? argv[sIdx + 1] : undefined;
       await runChat(sessionId);
       break;
     }
-    
-    case "acp": {
-      // Read prompt from stdin
-      const readline = await import("readline");
-      const rl = readline.createInterface({ input: process.stdin });
-      let prompt = "";
-      for await (const line of rl) {
-        prompt += line + "\n";
-      }
-      await runSingleCall(prompt);
-      break;
-    }
-    
-    case "serve": {
-      const portIdx = argv.indexOf("--port");
-      const port = portIdx !== -1 ? Number(argv[portIdx + 1]) : 8080;
-      console.log(`HTTP server on port ${port} (not implemented yet)`);
-      break;
-    }
-    
-    case "models": {
-      await runModels();
-      break;
-    }
-    
     case "session": {
       const action = argv[1] || "list";
       const args = argv.slice(2);
-      await runSession(action, args);
+      await runSessionCommand(action, args);
       break;
     }
-    
     default: {
-      // Treat as single call
       await runSingleCall(command + " " + argv.slice(1).join(" "));
-      break;
     }
   }
 }
