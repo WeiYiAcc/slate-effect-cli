@@ -1,0 +1,12 @@
+﻿任务,状态,优先级,负责人,标签,创建时间,更新时间
+sec-run 单次调用,已完成,无优先级,WeiYiAcc,slate-effect-cli,2024-09-04T04:45:00Z,2024-09-04T05:00:00Z
+sec-chat REPL会话,已完成,无优先级,WeiYiAcc,slate-effect-cli,2024-09-04T04:45:00Z,2024-09-04T05:00:00Z
+sec-session 持久化,已完成,无优先级,WeiYiAcc,slate-effect-cli,2024-09-04T04:45:00Z,2024-09-04T05:00:00Z
+sec-effect-agent 重构,已完成,无优先级,WeiYiAcc,slate-effect-cli,2024-09-04T04:45:00Z,2024-09-04T05:00:00Z
+sec-serve HTTP server,待办,无优先级,WeiYiAcc,slate-effect-cli,2024-09-04T04:45:00Z,2024-09-04T04:45:00Z
+sec-acp ACP协议,待办,无优先级,WeiYiAcc,slate-effect-cli,2024-09-04T04:45:00Z,2024-09-04T04:45:00Z
+sec-tools 工具调用,待办,无优先级,WeiYiAcc,slate-effect-cli,2024-09-04T04:45:00Z,2024-09-04T04:45:00Z
+sec-tool-read read工具,待办,无优先级,WeiYiAcc,slate-effect-cli,2024-09-04T04:45:00Z,2024-09-04T04:45:00Z
+sec-tool-bash bash工具,待办,无优先级,WeiYiAcc,slate-effect-cli,2024-09-04T04:45:00Z,2024-09-04T04:45:00Z
+sec-tui TUI界面,待办,无优先级,WeiYiAcc,slate-effect-cli,2024-09-04T04:45:00Z,2024-09-04T04:45:00Z
+sec-multica multica集成,待办,无优先级,WeiYiAcc,slate-effect-cli,2024-09-04T04:45:00Z,2024-09-04T04:45:00Z
