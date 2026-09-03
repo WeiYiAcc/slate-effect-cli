@@ -1,0 +1,10 @@
+# CLIProxyAPI basic config
+port: 7777
+host: "127.0.0.1"
+
+# Disable remote management
+home-jwt: ""
+home-disable-cluster-discovery: true
+
+# Logging
+log-level: "info"

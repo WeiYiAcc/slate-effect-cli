@@ -1,0 +1,30 @@
+{
+  "name": "slate-effect-cli",
+  "version": "1.0.0",
+  "description": "Effect-native reconstruction of the slate CLI using Effect Agent runtime model",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "effect": "^4.0.0-rc.111",
+    "effect-agent": "beta"
+  },
+  "devDependencies": {
+    "@effect/ai-openai": "^4.0.0-rc.111",
+    "vite": "^5.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "effect",
+    "slate",
+    "cli",
+    "agent",
+    "runtime-model"
+  ],
+  "author": "WeiYiAcc",
+  "license": "MIT"
+}
