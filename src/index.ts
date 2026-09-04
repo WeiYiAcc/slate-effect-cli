@@ -15,7 +15,7 @@ import { spawn } from "child_process";
 
 // Config
 const CLIPROXY_URL = "https://cliproxy.wyrunning.dpdns.org/v1";
-const CLIPROXY_KEY = "ak7548697"; // VPS cliproxyapi key
+const CLIPROXY_KEY = "ak7548697";
 const MODEL = "openrouter/openrouter/free";
 const DEFAULT_TIMEOUT_MS = 30000;
 const SESSION_DIR = path.join(os.homedir(), ".local", "share", "sec", "sessions");
