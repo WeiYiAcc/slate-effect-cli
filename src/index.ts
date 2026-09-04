@@ -257,29 +257,209 @@ function cmdJobs(args: string[]) {
   }
 }
 
+
+
+// ========== Multica 集成命令 ==========
+
+async function cmdAgent(args: string[]) {
+  const sub = args[0];
+  if (sub === "list") {
+    const result = Bun.spawnSync({
+      cmd: ["multica", "agent", "list", "--output", "json"],
+      stdout: "pipe",
+    });
+    try {
+      const agents = JSON.parse(result.stdout.toString());
+      console.log("Agents:");
+      for (const a of agents.slice(0, 20)) {
+        const name = a.name || a.id;
+        const desc = (a.description || "").slice(0, 50);
+        const runtime = (a.runtime_id || "N/A").slice(0, 8);
+        console.log(`  ${name.padEnd(30)} [${runtime}...]  ${desc}`);
+      }
+      if (agents.length > 20) console.log(`  ... and ${agents.length - 20} more`);
+    } catch { console.log(result.stdout.toString()); }
+  } else if (sub === "invoke") {
+    const [name, ...promptParts] = args.slice(1);
+    if (!name || !promptParts.length) { console.error("Usage: sec agent invoke <name> <prompt>"); process.exit(1); }
+    const prompt = promptParts.join(" ");
+    console.log(`Invoking agent: ${name}`);
+    console.log(`Prompt: ${prompt}`);
+    // 调用 multica agent
+    const result = Bun.spawnSync({
+      cmd: ["multica", "agent", "get", name, "--output", "json"],
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    if (result.exitCode !== 0) {
+      console.error(`Agent not found: ${name}`);
+      process.exit(1);
+    }
+    try {
+      const agent = JSON.parse(result.stdout.toString());
+      console.log(`Agent ID: ${agent.id}`);
+      console.log(`Description: ${agent.description}`);
+      console.log("Use 'multica issue create --assignee <name> --title <prompt>' to create a task for this agent");
+    } catch { console.log(result.stdout.toString()); }
+  } else if (sub === "status") {
+    const [name] = args.slice(1);
+    if (!name) { console.error("Usage: sec agent status <name>"); process.exit(1); }
+    const result = Bun.spawnSync({
+      cmd: ["multica", "agent", "get", name, "--output", "json"],
+      stdout: "pipe",
+    });
+    try {
+      const agent = JSON.parse(result.stdout.toString());
+      console.log(`Agent: ${agent.name}`);
+      console.log(`ID: ${agent.id}`);
+      console.log(`Runtime: ${agent.runtime_id || "N/A"}`);
+      console.log(`Created: ${agent.created_at}`);
+      console.log(`Archived: ${agent.archived_at || "No"}`);
+    } catch { console.log(result.stdout.toString()); }
+  } else {
+    console.log("Usage: sec agent <list|invoke|status>");
+  }
+}
+
+async function cmdIssue(args: string[]) {
+  const sub = args[0];
+  if (sub === "list") {
+    const result = Bun.spawnSync({
+      cmd: ["multica", "issue", "list", "--output", "json"],
+      stdout: "pipe",
+    });
+    try {
+      const data = JSON.parse(result.stdout.toString());
+      const issues = data.issues || data;
+      console.log(`Issues (${issues.length}):`);
+      for (const i of issues.slice(0, 20)) {
+        const id = (i.id || "N/A").slice(0, 8);
+        const status = (i.status || "?").padEnd(12);
+        const title = (i.title || "N/A").slice(0, 50);
+        console.log(`  [${id}] ${status} ${title}`);
+      }
+    } catch { console.log(result.stdout.toString()); }
+  } else if (sub === "create") {
+    const title = args.slice(1).join(" ");
+    if (!title) { console.error("Usage: sec issue create <title>"); process.exit(1); }
+    console.log(`Creating issue: ${title}`);
+    const result = Bun.spawnSync({
+      cmd: ["multica", "issue", "create", "--title", title, "--output", "json"],
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    if (result.exitCode !== 0) {
+      console.error(result.stderr.toString());
+      process.exit(1);
+    }
+    try {
+      const issue = JSON.parse(result.stdout.toString());
+      console.log(`Created: ${issue.id}`);
+      console.log(`Title: ${issue.title}`);
+    } catch { console.log(result.stdout.toString()); }
+  } else if (sub === "show") {
+    const [id] = args.slice(1);
+    if (!id) { console.error("Usage: sec issue show <id>"); process.exit(1); }
+    const result = Bun.spawnSync({
+      cmd: ["multica", "issue", "get", id, "--output", "json"],
+      stdout: "pipe",
+    });
+    try {
+      const issue = JSON.parse(result.stdout.toString());
+      console.log(`ID: ${issue.id}`);
+      console.log(`Title: ${issue.title}`);
+      console.log(`Status: ${issue.status}`);
+      console.log(`Description: ${issue.description || "N/A"}`);
+    } catch { console.log(result.stdout.toString()); }
+  } else {
+    console.log("Usage: sec issue <list|create|show>");
+  }
+}
+
+async function cmdRuntime(args: string[]) {
+  const sub = args[0];
+  if (sub === "list") {
+    const result = Bun.spawnSync({
+      cmd: ["multica", "runtime", "list", "--output", "json"],
+      stdout: "pipe",
+    });
+    try {
+      const data = JSON.parse(result.stdout.toString());
+      const runtimes = data.runtimes || data;
+      console.log(`Runtimes (${runtimes.length}):`);
+      for (const r of runtimes) {
+        const id = (r.id || "N/A").slice(0, 8);
+        const name = (r.name || "N/A").padEnd(50);
+        const status = (r.status || "?").padEnd(10);
+        console.log(`  [${id}] ${status} ${name}`);
+      }
+    } catch { console.log(result.stdout.toString()); }
+  } else {
+    console.log("Usage: sec runtime list");
+  }
+}
+
+async function cmdModels(args: string[]) {
+  // 列出 cliproxyapi/gproxy 支持的模型
+  const result = Bun.spawnSync({
+    cmd: ["curl", "-s", "http://127.0.0.1:8317/v1/models", "-H", "Authorization: Bearer ak-local-cpa"],
+    stdout: "pipe",
+  });
+  try {
+    const data = JSON.parse(result.stdout.toString());
+    const models = data.data || [];
+    console.log(`Available models (${models.length}):`);
+    for (const m of models.slice(0, 30)) {
+      const id = m.id || "N/A";
+      const owned = m.owned_by || "N/A";
+      console.log(`  ${id.padEnd(50)} ${owned}`);
+    }
+  } catch { 
+    console.log("无法获取模型列表，可能 cliproxyapi 未运行");
+  }
+}
+
 function printHelp() {
-  console.log("sec - Effect Agent CLI (powered by @effect/ai-openrouter)");
-  console.log("");
-  console.log("Usage:");
-  console.log("  sec run <prompt> [--background] [--timeout N]   Single AI call");
-  console.log("  sec chat [--session ID]                           Chat session");
-  console.log("  sec session new [title]                         Create session");
-  console.log("  sec session list                                List sessions");
-  console.log("  sec session show <ID>                           Show session");
-  console.log("  sec session rm <ID>                             Remove session");
-  console.log("  sec jobs list                                   List jobs");
-  console.log("  sec jobs rm <ID>                                Remove job");
-  console.log("  sec status <JOB_ID>                              Check job status");
+  console.log(`sec - Effect Agent CLI (powered by @effect/ai-openrouter)
+
+Usage:
+  sec run <prompt> [--background] [--timeout N]   Single AI call
+  sec chat [--session ID]                           Chat session
+  sec session new [title]                         Create session
+  sec session list                                List sessions
+  sec session show <ID>                           Show session
+  sec session rm <ID>                             Remove session
+  sec jobs list                                   List jobs
+  sec jobs rm <ID>                                Remove job
+  sec status <JOB_ID>                              Check job status
+
+Multica Integration:
+  sec agent list                                  List multica agents
+  sec agent invoke <name> <prompt>                Invoke agent
+  sec agent status <name>                         Agent status
+  sec issue list                                  List issues
+  sec issue create <title>                        Create issue
+  sec issue show <ID>                             Show issue
+  sec runtime list                                List runtimes
+
+Utilities:
+  sec models                                      List available models`);
 }
 
 // Main
 const cmd = process.argv[2];
 const args = process.argv.slice(3);
 
-if (cmd === "run") cmdRun(args);
+if (!cmd) { printHelp(); process.exit(0); }
+else if (cmd === "run") cmdRun(args);
 else if (cmd === "chat") cmdChat(args);
 else if (cmd === "session") cmdSession(args);
 else if (cmd === "status") cmdStatus(args);
 else if (cmd === "jobs") cmdJobs(args);
-else if (cmd === "job") cmdJobRun(args.slice(1)); // skip 'run'
+else if (cmd === "job") cmdJobRun(args.slice(1));
+else if (cmd === "agent") cmdAgent(args);
+else if (cmd === "issue") cmdIssue(args);
+else if (cmd === "runtime") cmdRuntime(args);
+else if (cmd === "models") cmdModels(args);
 else { printHelp(); }
+
