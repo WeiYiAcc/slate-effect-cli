@@ -5,6 +5,7 @@
     "": {
       "name": "slate-effect-cli",
       "dependencies": {
+        "@effect/ai-openrouter": "4.0.0-rc.112",
         "@rivet-dev/agentos": "^0.2.19",
         "effect": "4.0.0-rc.112",
         "effect-agent": "0.1.0-beta.47",
@@ -123,6 +124,8 @@
     "@effect-agent/sandbox": ["@effect-agent/sandbox@0.1.0-beta.47", "", { "peerDependencies": { "effect": "^4.0.0-rc.112" } }, "sha512-p1I5+DjKc9HzL8t52aY/a6NJ679O/sXWOtlY1gpHR5bs13WPXFjQN8Z3C789XIzoyGbU3cvcSOAg9FL+jWi8WQ=="],
 
     "@effect/ai-openai": ["@effect/ai-openai@4.0.0-rc.112", "", { "peerDependencies": { "effect": "^4.0.0-rc.112" } }, "sha512-j2X86xvgpAtNiusyESADHZn3PUzMVatE1zWXd0No2aybx/euKiVBVWZOtzq7ntJ5KvPHRBOFXTGPADdApQrwug=="],
+
+    "@effect/ai-openrouter": ["@effect/ai-openrouter@4.0.0-rc.112", "", { "peerDependencies": { "effect": "^4.0.0-rc.112" } }, "sha512-wgMy6v4P5SsvMoZRcDBBozgHyQ1YujRD8U3ggYt/fkyVXvCIrh28lNEbqLKM2NLojc43kVM3hk2Fe7LKhaEqcw=="],
 
     "@effect/platform-bun": ["@effect/platform-bun@4.0.0-rc.112", "", { "dependencies": { "@effect/platform-node-shared": "^4.0.0-rc.112" }, "peerDependencies": { "effect": "^4.0.0-rc.112" } }, "sha512-Y5n2HhV/vsbrJls9ukX42RL7zqXQxISHegWFsP9njsCyDmGTnq7QYSO82rglwrLPwtTrv5dkSRTuGw4+oXxgMg=="],
 
