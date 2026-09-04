@@ -5,13 +5,14 @@ import { Agent, AgentRuntime } from "effect-agent";
 import { AgentPolicy } from "effect-agent/AgentPolicy";
 import { ThreadHistory } from "effect-agent/ThreadHistory";
 import { IdGenerator } from "effect-agent/IdGenerator";
-import { Toolkit } from "effect/unstable/ai";
 import { FetchHttpClient } from "effect/unstable/http";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import * as readline from "readline";
 import { spawn } from "child_process";
+
+import { SecToolkit, SecToolkitLayer } from "./tools/sec-tools.js";
 
 // Config
 const CLIPROXY_URL = "https://cliproxy.wyrunning.dpdns.org/v1";
@@ -56,10 +57,10 @@ function deleteJob(id: string) {
 const secAgent = Agent.make("sec", {
   input: Schema.String,
   output: Schema.Struct({ response: Schema.String }),
-  instructions: 'You MUST always respond with valid JSON like {"response": "your answer here"}. Never respond with plain text.',
-  toolkit: Toolkit.empty,
+  instructions: "You are sec, a CLI agent with powerful tools. You MUST always respond with valid JSON like RESPJSON. You have access to: read (file contents), bash (execute commands), edit (replace file content), websearch (search web). Use these tools when helpful. Never respond with plain text outside JSON.",
+  toolkit: SecToolkit,
   policy: AgentPolicy.make({
-    maxTurns: 3, maxToolCalls: 5, maxDuration: "30 seconds", toolConcurrency: 1,
+    maxTurns: 5, maxToolCalls: 10, maxDuration: "60 seconds", toolConcurrency: 2,
   }),
 });
 
@@ -76,10 +77,9 @@ function createProgram(prompt: string) {
     Effect.provide(FetchHttpClient.layer),
     Effect.provide(IdGenerator.layer),
     Effect.provide(ThreadHistory.layerTransient),
+    Effect.provide(SecToolkitLayer),
   );
 }
-
-// Run agent with native timeout
 async function runAgent(prompt: string, timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -446,6 +446,46 @@ Utilities:
   sec models                                      List available models`);
 }
 
+// ========== celld SQLite Storage ==========
+import { createSession, getSession, listSessions, deleteSession, appendEvent, getEvents, recordUsage, getTotalUsage } from "./storage/celld-session-storage.js";
+
+function cmdSqlite(args: string[]) {
+  const sub = args[0];
+  if (sub === "new") {
+    const title = args.slice(1).join(" ") || "New session";
+    const s = createSession(title);
+    console.log("Created:", s.id);
+  } else if (sub === "list") {
+    const sessions = listSessions();
+    console.log("Sessions (" + sessions.length + "):");
+    for (const s of sessions) {
+      console.log("  " + s.id + "  " + (s.title || "Untitled") + "  [" + s.eventCount + " events]  " + (s.updated_at || s.created_at));
+    }
+  } else if (sub === "show") {
+    const s = getSession(args[1]);
+    if (!s) { console.error("Session not found"); return; }
+    console.log(JSON.stringify(s, null, 2));
+  } else if (sub === "events") {
+    const events = getEvents(args[1]);
+    console.log("Events (" + events.length + "):");
+    for (const e of events) {
+      console.log("  [" + e.ts + "] " + e.type + ": " + JSON.stringify(e.data).slice(0, 200));
+    }
+  } else if (sub === "rm") {
+    const ok = deleteSession(args[1]);
+    console.log(ok ? "Deleted" : "Not found");
+  } else if (sub === "usage") {
+    const u = getTotalUsage(args[1]);
+    console.log("Total usage for " + args[1] + ":");
+    console.log("  Input tokens: " + u.inputTokens);
+    console.log("  Output tokens: " + u.outputTokens);
+    console.log("  Cost: $" + u.cost.toFixed(6));
+  } else {
+    console.log("sec sqlite - celld-backed session storage");
+    console.log("Usage: sec sqlite new|list|show|events|rm|usage");
+  }
+}
+
 // Main
 const cmd = process.argv[2];
 const args = process.argv.slice(3);
@@ -461,5 +501,6 @@ else if (cmd === "agent") cmdAgent(args);
 else if (cmd === "issue") cmdIssue(args);
 else if (cmd === "runtime") cmdRuntime(args);
 else if (cmd === "models") cmdModels(args);
+else if (cmd === "sqlite") cmdSqlite(args);
 else { printHelp(); }
 

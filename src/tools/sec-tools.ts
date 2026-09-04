@@ -9,8 +9,8 @@ import { join } from "path";
 
 export class ReadParams extends Schema.Class<ReadParams>("ReadParams")({
   path: Schema.String,
-  offset: Schema.Int.check(Schema.isNonNegative).pipe(Schema.optional),
-  limit: Schema.Int.check(Schema.isPositive).pipe(Schema.optional),
+  offset: Schema.optional(Schema.Union([Schema.Int, Schema.Null])),
+  limit: Schema.optional(Schema.Union([Schema.Int, Schema.Null])),
 }) {}
 
 export class ReadSuccess extends Schema.Class<ReadSuccess>("ReadSuccess")({
@@ -23,7 +23,7 @@ export class ReadError extends Schema.TaggedError<ReadError>()("ReadError", {
 
 export class BashParams extends Schema.Class<BashParams>("BashParams")({
   command: Schema.String,
-  cwd: Schema.String.pipe(Schema.optional),
+  cwd: Schema.optional(Schema.String),
 }) {}
 
 export class BashSuccess extends Schema.Class<BashSuccess>("BashSuccess")({
@@ -119,9 +119,9 @@ export const SecToolkitLayer = SecToolkit.toLayer({
         const lines = content.split("\n");
         const start = offset ?? 0;
         const end = limit ? start + limit : lines.length;
-        return {
+        return new ReadSuccess({
           content: lines.slice(start, end).join("\n"),
-        };
+        });
       } catch (e) {
         return yield* Effect.fail(new ReadError({
           message: e instanceof Error ? e.message : String(e),
@@ -140,10 +140,10 @@ export const SecToolkitLayer = SecToolkit.toLayer({
         proc.stdout?.on("data", (d) => { stdout += d.toString(); });
         proc.stderr?.on("data", (d) => { stderr += d.toString(); });
         proc.on("close", (code) => {
-          resolve({ stdout, stderr, exitCode: code ?? 0 });
+          resolve(new BashSuccess({ stdout, stderr, exitCode: code ?? 0 }));
         });
         proc.on("error", (e) => {
-          resolve({ stdout: "", stderr: e.message, exitCode: 1 });
+          resolve(new BashSuccess({ stdout: "", stderr: e.message, exitCode: 1 }));
         });
       })
     ),
@@ -161,7 +161,7 @@ export const SecToolkitLayer = SecToolkit.toLayer({
         }
         const updated = content.slice(0, idx) + newContent + content.slice(idx + old.length);
         fs.writeFileSync(resolved, updated, "utf-8");
-        return { path: filePath };
+        return new EditSuccess({ path: filePath });
       } catch (e) {
         return yield* Effect.fail(new EditError({
           message: e instanceof Error ? e.message : String(e),
@@ -177,12 +177,12 @@ export const SecToolkitLayer = SecToolkit.toLayer({
           const resp = await fetch(url);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const data = await resp.json() as { results?: Array<{ text?: string; URL?: string }> };
-          return {
+          return new WebSearchSuccess({
             results: (data.results ?? []).slice(0, 10).map((r) => ({
               text: r.text ?? "",
               url: r.URL ?? "",
             })),
-          };
+          });
         } catch (e) {
           throw new WebSearchError({
             message: e instanceof Error ? e.message : String(e),

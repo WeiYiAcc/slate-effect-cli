@@ -1,46 +1,68 @@
 # sec - Effect Agent CLI
 
-基于 Effect Agent 运行时模型的命令行 AI 工具。
+基于 Effect Agent 运行时模型的命令行 AI 工具。sec 是一个有真实工具能力的 Agent CLI。
 
 ## 技术栈
 
-- **Effect Agent Runtime**: `@effect-agent/core` + `@effect-agent/engine`
-- **AI Provider**: `@effect/ai-openrouter@4.0.0-rc.112`
+- **Effect Agent Runtime**: `@effect-agent/core` + `@effect-agent/engine` (v0.1.0-beta.47)
+- **AI Provider**: `@effect/ai-openrouter` + `effect@4.0.0-rc.112`
+- **Tools**: read, bash, edit, websearch (基于 `effect/unstable/ai` Tool.make())
+- **Session Storage**: celld SQLite (`bun:sqlite`) + 文件系统 JSON
 - **Runtime**: Bun + TypeScript
 
 ## 架构
 
 ```
-sec CLI (@effect/ai-openrouter)
-    ↓ HTTP POST /v1/chat/completions
-cliproxyapi (https://cliproxy.wyrunning.dpdns.org)
-    ├─ 认证密钥: ak7548697
-    ├─ owned_by: "gproxy" (gproxy 透传层)
-    ↓ 透传
-VPS cliproxyapi upstream
-    ├─ 认证密钥: ak7548697
-    ├─ 路由 "openrouter/openrouter/free" 模型
-    ↓ 转发
-OpenRouter API
-    ↓
-minimax/minimax-m3:free
+sec CLI (Effect Agent)
+  toolkit: [read, bash, edit, websearch]
+  policy: maxTurns=5, maxToolCalls=10, toolConcurrency=2
+  ↓
+cliproxyapi (https://cliproxy.wyrunning.dpdns.org/v1)
+  ├─ API key: ak7548697
+  └─ → OpenRouter → minimax/minimax-m3:free
 ```
 
-### 关键说明
+## 工具
 
-1. **使用 `@effect/ai-openrouter` 而不是 `@effect/ai-openai`**：
-   - `@effect/ai-openai` 使用 OpenAI Responses API (`/v1/responses`)
-   - `@effect/ai-openrouter` 使用 Chat Completions API (`/v1/chat/completions`)
-   - Chat Completions API 避免了 SSE schema 不兼容问题
+4 个真实工具，Agent 可调用：
 
-2. **通过 cliproxyapi 透传而不是直接连接 OpenRouter**：
-   - 本地服务 `127.0.0.1:8317` 作为认证网关
-   - cliproxyapi 是 gproxy 的透传层（models 响应显示 `owned_by: "gproxy"`）
-   - 最终由 gproxy 连接 OpenRouter 并路由到实际模型
+| 工具 | 用途 | 实现 |
+|------|------|------|
+| `read` | 读文件 (offset/limit) | `fs.readFileSync` |
+| `bash` | 执行命令 | `child_process.spawn` |
+| `edit` | 替换文件内容 | `fs.writeFileSync` |
+| `websearch` | DuckDuckGo 搜索 | `fetch(url)` |
 
-3. **实际模型**：
-   - 配置模型: `openrouter/openrouter/free`
-   - 实际模型: `minimax/minimax-m3:free`
+## 使用
+
+```bash
+# 单次请求（带工具调用）
+sec run "What is /tmp/test.txt?"
+sec run "Run: echo hello"
+sec run "Search for 'TypeScript effect'"
+
+# 后台任务
+sec run "background job" --background
+
+# 多轮对话
+sec chat --session <id>
+
+# 会话管理
+sec session new|list|show|rm
+
+# celld SQLite 存储（MAKA-style Event Log）
+sec sqlite new "my-session"   # 创建 session
+sec sqlite list              # 列出所有 session
+sec sqlite show <id>         # 查看 session
+sec sqlite events <id>       # 查看事件日志
+sec sqlite rm <id>           # 删除
+sec sqlite usage <id>        # token 使用
+
+# 其他
+sec jobs list|rm
+sec models
+sec agent list|invoke|status
+```
 
 ## 安装
 
@@ -49,55 +71,21 @@ cd /home/weiyiacc/slate-effect-cli
 bun install
 ```
 
-## 配置
-
-当前硬编码配置（后续改为配置文件）：
-
-```typescript
-// src/index.ts
-const CLIPROXY_URL = "http://127.0.0.1:8317/v1";
-const CLIPROXY_KEY = "ak-local-cpa";
-const MODEL = "openrouter/openrouter/free";
-```
-
-## 使用
-
-```bash
-# 单次请求
-sec run "What is 2+2?"
-
-# 后台任务
-sec run --background "long task"
-sec status <job_id>
-
-# 多轮对话
-sec chat
-# 或指定会话
-sec chat --session <session_id>
-
-# 会话管理
-sec session new "my-project"
-sec session list
-sec session show <session_id>
-sec session rm <session_id>
-
-# 后台任务管理
-sec jobs list
-sec jobs rm <job_id>
-```
-
 ## 开发
 
 ```bash
-# 运行测试
-bun run src/index.ts run "test"
-
-# 调试 Effect Agent
-bun run test-openrouter-math.ts
+bun run src/index.ts run "Run: echo hello"
+bun run src/index.ts run "Use the read tool to read README.md"
+bun run src/index.ts sqlite list
 ```
+
+## 已知问题
+
+- 模型 JSON 输出格式不稳定
+- 使用 `minimax/minimax-m3:free` 模型
 
 ## 相关文档
 
-- [Effect Agent 文档](https://effect-agent.com/guide/getting-started)
-- [@effect/ai-openrouter npm](https://www.npmjs.com/package/@effect/ai-openrouter)
+- [Effect Agent](https://effect-agent.com/guide/getting-started)
+- [@effect/ai-openrouter](https://www.npmjs.com/package/@effect/ai-openrouter)
 - [OpenRouter](https://openrouter.ai/)

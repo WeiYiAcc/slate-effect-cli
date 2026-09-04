@@ -49,3 +49,16 @@ sec-cell/
 
 # Local issue reports
 AI_OPENAI_ISSUE.md
+
+# Dependencies
+node_modules/
+bun.lock
+
+# Large generated files
+dist/
+build/
+*.aospkg
+*.wasm
+*.so
+*.node
+*.log
