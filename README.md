@@ -89,3 +89,34 @@ bun run src/index.ts sqlite list
 - [Effect Agent](https://effect-agent.com/guide/getting-started)
 - [@effect/ai-openrouter](https://www.npmjs.com/package/@effect/ai-openrouter)
 - [OpenRouter](https://openrouter.ai/)
+
+### sec chat --use-sqlite
+
+Interactive chat session with celld SQLite storage (MAKA-style Event Log):
+
+```bash
+sec chat --use-sqlite
+sec chat --use-sqlite --session <session-id>
+```
+
+Commands within session:
+- `exit` - Quit
+- `history` - Show message history
+- `events` - Show celld event log
+- `usage` - Show token usage stats
+- `clear` - Clear message history
+
+Sessions are stored in SQLite (`~/.local/share/sec/celld/sessions.db`).
+
+### sec sqlite
+
+Direct SQLite operations:
+
+```bash
+sec sqlite new [title]         # Create new session
+sec sqlite list                # List all sessions
+sec sqlite show <id>           # Show session details
+sec sqlite events <id>          # Show event log
+sec sqlite rm <id>             # Delete session
+sec sqlite usage [id]           # Show usage stats
+```

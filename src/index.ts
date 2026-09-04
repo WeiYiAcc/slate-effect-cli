@@ -154,6 +154,7 @@ async function cmdJobRun(args: string[]) {
 }
 
 function cmdChat(args: string[]) {
+  if (args.includes("--use-sqlite")) return cmdChatCelld(args.filter(a => a !== "--use-sqlite"));
   let sessionId: string | null = null;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--session" || args[i] === "-s") sessionId = args[++i];
@@ -180,6 +181,82 @@ function cmdChat(args: string[]) {
       session!.messages.push({ role: "assistant", content: resp });
       saveSession(session!);
     } catch (err: any) { console.error("Error:", err.message || err); }
+    rl.prompt();
+  });
+  rl.on("close", () => process.exit(0));
+}
+
+// celld-backed chat with MAKA-style Event Log (uses spawnSync to avoid Effect fiber issues)
+function cmdChatCelld(args: string[]) {
+  let sessionId: string | null = null;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--session" || args[i] === "-s") sessionId = args[++i];
+  }
+  let session = sessionId ? getSession(sessionId) : null;
+  if (!session) {
+    sessionId = "ses_" + genId();
+    session = createSession("Chat " + new Date().toISOString(), MODEL);
+    session.id = sessionId;
+  }
+  console.log("Session: " + session.id + " [celld SQLite]");
+  console.log("Commands: exit, history, events, usage, clear");
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, prompt: "> " });
+  rl.prompt();
+  rl.on("line", async (line) => {
+    const input = line.trim();
+    if (!input) { rl.prompt(); return; }
+    if (input === "exit") { rl.close(); return; }
+    if (input === "history") {
+      console.log("--- History (" + session!.entries.length + " messages) ---");
+      for (const e of session!.entries) { console.log("[" + e.role + "] " + e.content.slice(0, 100)); }
+      console.log("--- End ---");
+      rl.prompt(); return;
+    }
+    if (input === "events") {
+      const evs = getEvents(session!.id);
+      console.log("--- Events (" + evs.length + ") ---");
+      for (const e of evs) {
+        const d = typeof e.data === "string" ? e.data : JSON.stringify(e.data).slice(0, 150);
+        console.log("[" + e.ts.slice(11, 19) + "] " + e.type + ": " + d);
+      }
+      console.log("--- End ---");
+      rl.prompt(); return;
+    }
+    if (input === "usage") {
+      const u = getTotalUsage(session!.id);
+      console.log("Usage: input=" + u.inputTokens + " output=" + u.outputTokens + " cost=$" + u.cost.toFixed(6));
+      rl.prompt(); return;
+    }
+    if (input === "clear") { session!.entries = []; updateSession(session!); console.log("Session cleared"); rl.prompt(); return; }
+    const t0 = Date.now();
+    appendEvent(session!.id, { id: genId(), type: "user_message", ts: new Date().toISOString(), data: { content: input } });
+    session!.entries.push({ id: genId(), role: "user", content: input, ts: new Date().toISOString() });
+    try {
+      const result = Bun.spawnSync({ cmd: [BUN_BIN, SELF_SCRIPT, "run", input], stdout: "pipe", stderr: "pipe", timeout: 60000 });
+      const stdout = String(result.stdout || "").trim();
+      const stderr = String(result.stderr || "");
+      if (!stdout || stderr.includes("safe integers") || stderr.includes("usage fields")) {
+        const retry = Bun.spawnSync({ cmd: [BUN_BIN, SELF_SCRIPT, "run", input], stdout: "pipe", stderr: "pipe", timeout: 60000 });
+        const out2 = String(retry.stdout || "").trim();
+        const err2 = String(retry.stderr || "");
+        if (!out2) {
+          const errLine = err2.split(g).find((l: string) => l.includes("Error")) || err2.slice(0, 300);
+          throw new Error(errLine);
+        }
+        console.log(out2);
+        appendEvent(session!.id, { id: genId(), type: "assistant_message", ts: new Date().toISOString(), data: { content: out2, duration_ms: Date.now() - t0 } });
+        session!.entries.push({ id: genId(), role: "assistant", content: out2, ts: new Date().toISOString() });
+      } else {
+        console.log(stdout);
+        appendEvent(session!.id, { id: genId(), type: "assistant_message", ts: new Date().toISOString(), data: { content: stdout, duration_ms: Date.now() - t0 } });
+        session!.entries.push({ id: genId(), role: "assistant", content: stdout, ts: new Date().toISOString() });
+      }
+      console.error("[" + ((Date.now() - t0) / 1000).toFixed(2) + "s]");
+      updateSession(session!);
+    } catch (err: any) {
+      console.error("Error:", err.message || String(err));
+      appendEvent(session!.id, { id: genId(), type: "error", ts: new Date().toISOString(), data: { message: err.message || String(err) } });
+    }
     rl.prompt();
   });
   rl.on("close", () => process.exit(0));
@@ -447,7 +524,7 @@ Utilities:
 }
 
 // ========== celld SQLite Storage ==========
-import { createSession, getSession, listSessions, deleteSession, appendEvent, getEvents, recordUsage, getTotalUsage } from "./storage/celld-session-storage.js";
+import { createSession, getSession, updateSession, listSessions, deleteSession, appendEvent, getEvents, recordUsage, getTotalUsage } from "./storage/celld-session-storage.js";
 
 function cmdSqlite(args: string[]) {
   const sub = args[0];

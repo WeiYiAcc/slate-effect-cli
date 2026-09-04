@@ -28,7 +28,7 @@ function getDb(): Database {
   return _db;
 }
 
-function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function genId() { const r = Math.random().toString(36).slice(2, 10) + Date.now().toString(36); return r + Date.now().toString(36).slice(-2); }
 function now() { return new Date().toISOString(); }
 
 export interface SessionEntry { id: string; role: string; content: string; ts: string; toolCalls?: any[]; toolResults?: any[]; }
