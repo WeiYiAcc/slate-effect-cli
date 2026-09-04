@@ -13,11 +13,11 @@
 ```
 sec CLI (@effect/ai-openrouter)
     ↓ HTTP POST /v1/chat/completions
-cliproxyapi (127.0.0.1:8317)
-    ├─ 认证密钥: ak-local-cpa
+cliproxyapi (https://cliproxy.wyrunning.dpdns.org)
+    ├─ 认证密钥: ak7548697
     ├─ owned_by: "gproxy" (gproxy 透传层)
     ↓ 透传
-gproxy (100.110.98.84:8787)
+VPS cliproxyapi upstream
     ├─ 认证密钥: ak7548697
     ├─ 路由 "openrouter/openrouter/free" 模型
     ↓ 转发
