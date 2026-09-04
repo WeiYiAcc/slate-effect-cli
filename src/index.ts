@@ -26,7 +26,7 @@ const SELF_SCRIPT = "/home/weiyiacc/slate-effect-cli/src/index.ts";
 
 // Helpers
 function ensureDir(dir: string) { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); }
-function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function genId() { const r = Math.random().toString(36).slice(2, 10) + Date.now().toString(36); return r + Date.now().toString(36).slice(-2); }
 function genSessionId() { return "ses_" + genId(); }
 function genJobId() { return "job_" + genId(); }
 
@@ -100,17 +100,28 @@ async function runAgent(prompt: string, timeoutMs: number = DEFAULT_TIMEOUT_MS):
 async function cmdRun(args: string[]) {
   let background = false;
   let timeoutMs = DEFAULT_TIMEOUT_MS;
+  let sessionId: string | null = null;
   const promptParts: string[] = [];
   
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--background" || args[i] === "-b") background = true;
     else if (args[i] === "--timeout") { timeoutMs = parseInt(args[++i]) * 1000; }
     else if (args[i] === "--timeout-ms") { timeoutMs = parseInt(args[++i]); }
+    else if (args[i] === "--session" || args[i] === "-s") sessionId = args[++i];
     else promptParts.push(args[i]);
   }
   
-  const prompt = promptParts.join(" ").trim();
-  if (!prompt) { console.error("Usage: sec run <prompt> [--background] [--timeout N]"); process.exit(1); }
+  let prompt = promptParts.join(" ").trim();
+  if (!prompt) { console.error("Usage: sec run <prompt> [--background] [--timeout N] [--session ID]"); process.exit(1); }
+  
+  // If session specified, prepend history context
+  if (sessionId) {
+    const sess = getSession(sessionId);
+    if (sess && sess.entries.length > 0) {
+      const ctx = sess.entries.map((e: any) => e.role + ": " + e.content).join("\n");
+      prompt = "Previous conversation:\n" + ctx + "\n\nNew message: " + prompt;
+    }
+  }
   
   if (background) {
     const jobId = genJobId();
@@ -125,6 +136,18 @@ async function cmdRun(args: string[]) {
       const resp = await runAgent(prompt, timeoutMs);
       console.log(resp);
       console.error("[sec] Done in " + ((Date.now() - t0) / 1000).toFixed(2) + "s");
+      // Save to session if specified
+      if (sessionId) {
+        const rawPrompt = promptParts.join(" ").trim();
+        appendEvent(sessionId, { id: genId(), type: "user_message", ts: new Date().toISOString(), data: { content: rawPrompt } });
+        appendEvent(sessionId, { id: genId(), type: "assistant_message", ts: new Date().toISOString(), data: { content: resp, duration_ms: Date.now() - t0 } });
+        const sess = getSession(sessionId);
+        if (sess) {
+          sess.entries.push({ id: genId(), role: "user", content: rawPrompt, ts: new Date().toISOString() });
+          sess.entries.push({ id: genId(), role: "assistant", content: resp, ts: new Date().toISOString() });
+          updateSession(sess);
+        }
+      }
     } catch (err: any) {
       console.error("Error:", err.message || err);
       process.exit(1);
