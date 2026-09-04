@@ -309,3 +309,44 @@ const secAgent = new Agent({
 2. 复用 pi 的 session 存储（SQLite）
 3. 通过 pi 的 API 或 ACP 协议调用
 4. 保持 CLI 包装作为用户体验层
+
+
+---
+
+## 9. Jido/Elixir/OTP 关联分析
+
+### Jido 是什么
+Elixir/OTP 之上的 autonomous agent framework，形式化 GenServer 之上的 agent pattern。
+
+### Jido Assembly 架构
+- **People + Agents 同等地位** - 共享 rooms/messages/threads
+- **Signal 路由一切** - CloudEvents 兼容
+- **On-demand Agent 执行** - 每次启动 short-lived runtime
+- **Hologram UI** - Elixir 编译到 JS
+
+### TS 框架对应实现
+
+| Jido/Elixir | TypeScript 等价 |
+|------------|----------------|
+| Jido.Agent | agentos + Effect Agent |
+| Jido Signal | agentos ACP + pi-chord |
+| Jido Messaging | celld D1/SQLite |
+| Jido Action | Effect Agent Tool.make() |
+| Jido AI | @rivet-dev/agentos (Pi/Claude) |
+| Hologram | React + SSE |
+| BEAM | V8 Isolates |
+| OTP Supervision | 自己实现 |
+| Phoenix PubSub | celld Queue + SSE |
+
+### 实现难度
+- ✅ **完全可实现**: Agent runtime、Storage、Tools、Signals
+- ⚠️ **部分可实现**: UI（React 替代 Hologram）、Supervision
+- ❌ **难以等价**: BEAM 进程模型、LiveView
+
+### sec v3 演进方向
+1. 复用 celld + agentos 作为平台层
+2. 用 Effect Agent Tool.make() 提供 actions
+3. 集成 multica 作为 provider 适配器
+4. 添加 React UI（替代 Hologram）
+
+详见: [`JIDO-OTP-ANALYSIS.md`](./JIDO-OTP-ANALYSIS.md)
