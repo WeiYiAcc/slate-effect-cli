@@ -1,0 +1,178 @@
+[
+  {
+    "name": "agent",
+    "path": "packages/agent",
+    "sha": "b57ea2df39c3bbbfc4a85bc341f72f2d28973b34",
+    "size": 0,
+    "url": "https://api.github.com/repos/earendil-works/pi/contents/packages/agent?ref=main",
+    "html_url": "https://github.com/earendil-works/pi/tree/main/packages/agent",
+    "git_url": "https://api.github.com/repos/earendil-works/pi/git/trees/b57ea2df39c3bbbfc4a85bc341f72f2d28973b34",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/earendil-works/pi/contents/packages/agent?ref=main",
+      "git": "https://api.github.com/repos/earendil-works/pi/git/trees/b57ea2df39c3bbbfc4a85bc341f72f2d28973b34",
+      "html": "https://github.com/earendil-works/pi/tree/main/packages/agent"
+    }
+  },
+  {
+    "name": "ai",
+    "path": "packages/ai",
+    "sha": "cb10b84a11b7a1b0d6384487bbed3dd041d5da11",
+    "size": 0,
+    "url": "https://api.github.com/repos/earendil-works/pi/contents/packages/ai?ref=main",
+    "html_url": "https://github.com/earendil-works/pi/tree/main/packages/ai",
+    "git_url": "https://api.github.com/repos/earendil-works/pi/git/trees/cb10b84a11b7a1b0d6384487bbed3dd041d5da11",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/earendil-works/pi/contents/packages/ai?ref=main",
+      "git": "https://api.github.com/repos/earendil-works/pi/git/trees/cb10b84a11b7a1b0d6384487bbed3dd041d5da11",
+      "html": "https://github.com/earendil-works/pi/tree/main/packages/ai"
+    }
+  },
+  {
+    "name": "chord",
+    "path": "packages/chord",
+    "sha": "97ff67c212e6ad3bcf7bc0ce810541f35742b784",
+    "size": 0,
+    "url": "https://api.github.com/repos/earendil-works/pi/contents/packages/chord?ref=main",
+    "html_url": "https://github.com/earendil-works/pi/tree/main/packages/chord",
+    "git_url": "https://api.github.com/repos/earendil-works/pi/git/trees/97ff67c212e6ad3bcf7bc0ce810541f35742b784",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/earendil-works/pi/contents/packages/chord?ref=main",
+      "git": "https://api.github.com/repos/earendil-works/pi/git/trees/97ff67c212e6ad3bcf7bc0ce810541f35742b784",
+      "html": "https://github.com/earendil-works/pi/tree/main/packages/chord"
+    }
+  },
+  {
+    "name": "client",
+    "path": "packages/client",
+    "sha": "f5abb7b47f41d646422b15a6fb0bffb5ca7f4540",
+    "size": 0,
+    "url": "https://api.github.com/repos/earendil-works/pi/contents/packages/client?ref=main",
+    "html_url": "https://github.com/earendil-works/pi/tree/main/packages/client",
+    "git_url": "https://api.github.com/repos/earendil-works/pi/git/trees/f5abb7b47f41d646422b15a6fb0bffb5ca7f4540",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/earendil-works/pi/contents/packages/client?ref=main",
+      "git": "https://api.github.com/repos/earendil-works/pi/git/trees/f5abb7b47f41d646422b15a6fb0bffb5ca7f4540",
+      "html": "https://github.com/earendil-works/pi/tree/main/packages/client"
+    }
+  },
+  {
+    "name": "coding-agent",
+    "path": "packages/coding-agent",
+    "sha": "065fb41722bbaae7fe80b0786986749e5e8eb03c",
+    "size": 0,
+    "url": "https://api.github.com/repos/earendil-works/pi/contents/packages/coding-agent?ref=main",
+    "html_url": "https://github.com/earendil-works/pi/tree/main/packages/coding-agent",
+    "git_url": "https://api.github.com/repos/earendil-works/pi/git/trees/065fb41722bbaae7fe80b0786986749e5e8eb03c",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/earendil-works/pi/contents/packages/coding-agent?ref=main",
+      "git": "https://api.github.com/repos/earendil-works/pi/git/trees/065fb41722bbaae7fe80b0786986749e5e8eb03c",
+      "html": "https://github.com/earendil-works/pi/tree/main/packages/coding-agent"
+    }
+  },
+  {
+    "name": "evals",
+    "path": "packages/evals",
+    "sha": "6afb0149b1ee98937e947e94797302e79de685d5",
+    "size": 0,
+    "url": "https://api.github.com/repos/earendil-works/pi/contents/packages/evals?ref=main",
+    "html_url": "https://github.com/earendil-works/pi/tree/main/packages/evals",
+    "git_url": "https://api.github.com/repos/earendil-works/pi/git/trees/6afb0149b1ee98937e947e94797302e79de685d5",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/earendil-works/pi/contents/packages/evals?ref=main",
+      "git": "https://api.github.com/repos/earendil-works/pi/git/trees/6afb0149b1ee98937e947e94797302e79de685d5",
+      "html": "https://github.com/earendil-works/pi/tree/main/packages/evals"
+    }
+  },
+  {
+    "name": "protocol",
+    "path": "packages/protocol",
+    "sha": "d32de4f218bead3b416158a712d866aac93d555f",
+    "size": 0,
+    "url": "https://api.github.com/repos/earendil-works/pi/contents/packages/protocol?ref=main",
+    "html_url": "https://github.com/earendil-works/pi/tree/main/packages/protocol",
+    "git_url": "https://api.github.com/repos/earendil-works/pi/git/trees/d32de4f218bead3b416158a712d866aac93d555f",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/earendil-works/pi/contents/packages/protocol?ref=main",
+      "git": "https://api.github.com/repos/earendil-works/pi/git/trees/d32de4f218bead3b416158a712d866aac93d555f",
+      "html": "https://github.com/earendil-works/pi/tree/main/packages/protocol"
+    }
+  },
+  {
+    "name": "server",
+    "path": "packages/server",
+    "sha": "7082ede391b2e79da103173789f022b8b9b1c603",
+    "size": 0,
+    "url": "https://api.github.com/repos/earendil-works/pi/contents/packages/server?ref=main",
+    "html_url": "https://github.com/earendil-works/pi/tree/main/packages/server",
+    "git_url": "https://api.github.com/repos/earendil-works/pi/git/trees/7082ede391b2e79da103173789f022b8b9b1c603",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/earendil-works/pi/contents/packages/server?ref=main",
+      "git": "https://api.github.com/repos/earendil-works/pi/git/trees/7082ede391b2e79da103173789f022b8b9b1c603",
+      "html": "https://github.com/earendil-works/pi/tree/main/packages/server"
+    }
+  },
+  {
+    "name": "session-backends",
+    "path": "packages/session-backends",
+    "sha": "be55740157778185d8372e2db88b463caf4b9afe",
+    "size": 0,
+    "url": "https://api.github.com/repos/earendil-works/pi/contents/packages/session-backends?ref=main",
+    "html_url": "https://github.com/earendil-works/pi/tree/main/packages/session-backends",
+    "git_url": "https://api.github.com/repos/earendil-works/pi/git/trees/be55740157778185d8372e2db88b463caf4b9afe",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/earendil-works/pi/contents/packages/session-backends?ref=main",
+      "git": "https://api.github.com/repos/earendil-works/pi/git/trees/be55740157778185d8372e2db88b463caf4b9afe",
+      "html": "https://github.com/earendil-works/pi/tree/main/packages/session-backends"
+    }
+  },
+  {
+    "name": "telemetry",
+    "path": "packages/telemetry",
+    "sha": "04d71ac8dba4b8190c807540935b1046860597a4",
+    "size": 0,
+    "url": "https://api.github.com/repos/earendil-works/pi/contents/packages/telemetry?ref=main",
+    "html_url": "https://github.com/earendil-works/pi/tree/main/packages/telemetry",
+    "git_url": "https://api.github.com/repos/earendil-works/pi/git/trees/04d71ac8dba4b8190c807540935b1046860597a4",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/earendil-works/pi/contents/packages/telemetry?ref=main",
+      "git": "https://api.github.com/repos/earendil-works/pi/git/trees/04d71ac8dba4b8190c807540935b1046860597a4",
+      "html": "https://github.com/earendil-works/pi/tree/main/packages/telemetry"
+    }
+  },
+  {
+    "name": "tui",
+    "path": "packages/tui",
+    "sha": "dda1f61f885e470fa4c1964ea51ef4acf08fb8b2",
+    "size": 0,
+    "url": "https://api.github.com/repos/earendil-works/pi/contents/packages/tui?ref=main",
+    "html_url": "https://github.com/earendil-works/pi/tree/main/packages/tui",
+    "git_url": "https://api.github.com/repos/earendil-works/pi/git/trees/dda1f61f885e470fa4c1964ea51ef4acf08fb8b2",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/earendil-works/pi/contents/packages/tui?ref=main",
+      "git": "https://api.github.com/repos/earendil-works/pi/git/trees/dda1f61f885e470fa4c1964ea51ef4acf08fb8b2",
+      "html": "https://github.com/earendil-works/pi/tree/main/packages/tui"
+    }
+  }
+]
