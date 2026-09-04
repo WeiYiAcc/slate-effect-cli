@@ -46,3 +46,6 @@ test-doc-examples.ts
 # Local artifacts
 sec-cell/
 .celld/
+
+# Local issue reports
+AI_OPENAI_ISSUE.md
