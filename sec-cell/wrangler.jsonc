@@ -1,0 +1,7 @@
+{
+  // SEC Cell - celld Durable Object
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sec-cell",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-09-23"
+}
