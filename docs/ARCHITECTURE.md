@@ -350,3 +350,278 @@ Elixir/OTP 之上的 autonomous agent framework，形式化 GenServer 之上的 
 4. 添加 React UI（替代 Hologram）
 
 详见: [`JIDO-OTP-ANALYSIS.md`](./JIDO-OTP-ANALYSIS.md)
+
+
+---
+
+## 10. maka (Apache) - Runtime Event Log 架构
+
+### 什么是 maka
+
+**Apache Maka** = 高性能 agent workspace，用 append-only Runtime Event Log 管理 agent 状态
+
+- 官方网站: https://maka.apache.org/
+- 仓库: https://github.com/apache/maka
+- 技术栈: Node.js 22+ / Rust / SQLite / Electron
+
+### maka 核心设计
+
+**Log Is the Runtime** - 核心哲学
+
+```
+State(t) = Project(RuntimeEvents[0..t], policy, runtime configuration)
+```
+
+Runtime Event Log 是所有状态的语义来源，Session/Run/UI/Recovery 都是 Log 的投影。
+
+### maka packages
+
+| Package | 角色 |
+|---------|------|
+| `packages/core` | Session, RuntimeEvent, AgentRun, permission 合约 |
+| `packages/storage` | SQLite 存储控制平面 |
+| `packages/runtime` | SessionManager, AgentRun, model adapters, tools |
+| `packages/runtime-host` | 唯一执行权威 + 公共协议 |
+| `packages/eval` | 实验细胞, attempts, result selection |
+| `packages/cli` | TUI, `maka run`, `maka eval` |
+
+### maka 的 Actor/OTP 等价
+
+| Elixir/OTP | maka 等价 |
+|------------|----------|
+| GenServer | Runtime Kernel |
+| OTP Supervision | Runtime Host (单一权威) |
+| Phoenix Presence | Runtime Event Log projection |
+| Phoenix PubSub | SSE + WebSocket |
+| Agent Registry | SessionManager |
+| ETS | SQLite |
+
+### maka 的多 Agent 调度
+
+**Copy-on-Write vs Mailboxes** 两种路径
+
+maka 选择 **Copy-on-Write (Workflow Graph)**:
+- subagent 不自动继承父 agent 完整对话
+- 显式的 task specification
+- 单向数据流
+
+```text
+Main Agent ── task ──> Subagent
+Main Agent <── result ── Subagent
+```
+
+Codex 选择 **Mailboxes (Message-Driven)**:
+- 每个 agent 有地址和私有 mailbox
+- 异步消息传递
+- 多轮对话
+
+---
+
+## 11. rivet/agentos 的 Actor 实现
+
+### rivet crates
+
+| Crate | 角色 |
+|-------|------|
+| `actor-uds-client` | Unix Domain Socket actor 客户端 |
+| `kernel` | 核心 kernel |
+| `runtime` | Runtime 管理 |
+| `v8-runtime` | V8 isolate runtime |
+| `execution` | 执行引擎 |
+| `agentos-protocol` | ACP 协议 |
+| `agentos-sidecar` | Sidecar 实现 |
+
+### rivet/agentos vs BEAM/OTP
+
+| BEAM/OTP | rivet/agentos |
+|----------|--------------|
+| BEAM 进程 | V8 Isolates |
+| OTP Supervision | 无原生等价（需自己实现）|
+| GenServer | Agent Runtime |
+| Registry | SessionManager |
+| Phoenix PubSub | ACP Protocol |
+| ETS | D1/SQLite |
+
+### rivet 的限制
+
+1. **V8 Isolates 比 BEAM 重** - 内存开销更大
+2. **无原生 Supervision** - 需要自己实现故障恢复
+3. **单进程模型** - 扩展性不如分布式 BEAM
+
+---
+
+## 12. BEAM/OTP 的 TS/JS 替代方案
+
+### 方案对比
+
+| 方案 | 进程模型 | Supervision | 消息传递 | 状态管理 |
+|------|---------|-------------|---------|---------|
+| **BEAM/OTP** | 百万级轻量进程 | 原生监督树 | Mailbox | ETS/持久化 |
+| **rivet/agentos** | V8 Isolates | 无 | ACP Protocol | D1/SQLite |
+| **maka** | Node.js workers | Runtime Host | SSE/WebSocket | SQLite + Event Log |
+| **pi** | Node.js | 无 | chord | SQLite |
+| **Effect Agent** | Effect Runtime | 无 | Effect Layer | Provider |
+
+### 各方案评价
+
+#### rivet/agentos
+- ✅ V8 Isolates 隔离性好
+- ✅ ACP Protocol 标准化
+- ✅ 支持 Pi/Claude/Codex agents
+- ❌ 无 OTP Supervision
+- ❌ V8 比 BEAM 重
+
+#### maka
+- ✅ Runtime Event Log 设计优秀
+- ✅ SQLite 持久化
+- ✅ Agent Graph 调度
+- ❌ 无原生 actor 模型
+- ❌ 依赖 Electron
+
+#### pi (earendil-works)
+- ✅ chord (facet-service) 设计好
+- ✅ 轻量 Node.js
+- ❌ 无 Supervision
+- ❌ 功能较少
+
+---
+
+## 13. sec v3 架构：整合所有框架
+
+### 目标架构
+
+```
+sec v3 = celld + agentos + maka 设计 + pi + Effect Agent
+
+┌─────────────────────────────────────────────────────────────┐
+│                    Runtime Host (maka 风格)                    │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │              Runtime Event Log (append-only)             │ │
+│  │   Session / Run / Tool / Permission / Termination      │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                            │                                 │
+│  ┌─────────────────────────┼─────────────────────────────┐ │
+│  │              SessionManager                             │ │
+│  │   - Session lifecycle                                   │ │
+│  │   - Turn orchestration                                 │ │
+│  │   - Agent spawn/terminate                              │ │
+│  └─────────────────────────┬─────────────────────────────┘ │
+│                            │                                 │
+│  ┌─────────────────────────┼─────────────────────────────┐ │
+│  │              Agent Graph (maka Copy-on-Write)          │ │
+│  │   - Task decomposition                                 │ │
+│  │   - Subagent spawning                                  │ │
+│  │   - Result aggregation                                 │ │
+│  └─────────────────────────┬─────────────────────────────┘ │
+│                            │                                 │
+│  ┌─────────────────────────┼─────────────────────────────┐ │
+│  │              Runtime Kernel (Effect Agent)              │ │
+│  │   - Model loop                                         │ │
+│  │   - Tool execution                                     │ │
+│  │   - Context management                                 │ │
+│  │   - Recovery                                            │ │
+│  └─────────────────────────┬─────────────────────────────┘ │
+│                            │                                 │
+│  ┌─────────────────────────┼─────────────────────────────┐ │
+│  │              Tool Registry (Tool.make())               │ │
+│  │   - Filesystem (WorkspaceExecutor)                      │ │
+│  │   - Shell (Bash)                                       │ │
+│  │   - Search (Grep)                                      │ │
+│  │   - Custom tools                                       │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │              Storage (celld + SQLite)                    │ │
+│  │   - Sessions (SQLite)                                  │ │
+│  │   - KV (D1/celld)                                     │ │
+│  │   - Queue (celld)                                     │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 关键设计决策
+
+#### 1. 采用 maka 的 Runtime Event Log
+- append-only log 作为状态来源
+- Session/Run/UI 都是 log 的投影
+- 支持 crash recovery 和 continuation
+
+#### 2. 采用 rivet/agentos 的 V8 Runtime
+- V8 Isolates 作为 agent 隔离
+- ACP Protocol 作为 agent 间通信
+- 支持 Pi/Claude/Codex agents
+
+#### 3. 采用 pi 的 chord (facet-service)
+- Transport-neutral service composition
+- Plugin 系统
+- 可扩展架构
+
+#### 4. 保留 Effect Agent 的 Tool.make()
+- Schema-first tool 定义
+- 类型安全的 tool composition
+- Effect Layer 作为 AI Provider
+
+#### 5. 自己实现 Supervision（maka 风格）
+- Runtime Host 作为单一权威
+- SessionManager 管理生命周期
+- Agent Graph 处理多 agent 调度
+
+### 实现步骤
+
+```
+Phase 1: Runtime Event Log (maka)
+  - Event schema definition
+  - Log storage (SQLite)
+  - Projection system
+
+Phase 2: SessionManager (maka + rivet)
+  - Session/Run/Turn lifecycle
+  - Agent spawn/terminate
+  - Permission system
+
+Phase 3: Runtime Kernel (Effect Agent)
+  - Model loop
+  - Tool execution
+  - Context management
+
+Phase 4: Agent Graph (maka Copy-on-Write)
+  - Task decomposition
+  - Subagent spawning
+  - Result aggregation
+
+Phase 5: ACP Protocol (rivet)
+  - Agent间通信
+  - Provider bridges
+
+Phase 6: UI (集成现有产品)
+  - SSE/WebSocket
+  - Real-time updates
+```
+
+---
+
+## 14. 框架对比总结
+
+| 框架 | 语言 | 进程模型 | Supervision | 消息 | 存储 | 特点 |
+|------|------|---------|-------------|------|------|------|
+| **BEAM/OTP** | Elixir | 百万级轻量进程 | 原生监督树 | Mailbox | ETS | 黄金标准 |
+| **Jido** | Elixir | GenServer | OTP Supervision | Signal | D1/KV | Agent framework |
+| **maka** | Node.js/Rust | Node workers | Runtime Host | SSE | SQLite | Runtime Event Log |
+| **rivet/agentos** | TypeScript/Rust | V8 Isolates | 无 | ACP | D1/SQLite | V8 隔离 |
+| **pi** | TypeScript | Node.js | 无 | chord | SQLite | Facet-service |
+| **sec v3** | TypeScript | V8 + Node | Runtime Host | ACP + SSE | SQLite | 整合所有 |
+
+### sec v3 的独特价值
+
+```
+sec v3 = maka 的 Runtime Event Log + rivet 的 V8 Runtime + pi 的 chord + Effect Agent 的 Tool.make() + celld 的存储
+```
+
+这不是重复造轮子，而是：
+1. **maka** 没有 V8 runtime，只有 Node.js
+2. **rivet** 没有 Runtime Event Log 设计
+3. **pi** 功能较少，不是完整 workspace
+4. **celld** 只是存储，不是 runtime
+
+sec v3 整合这些框架的最佳特性，提供一个完整的本地 agent workspace。
