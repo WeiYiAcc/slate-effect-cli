@@ -1,10 +1,48 @@
-node_modules
-cliproxyapi/cli-proxy-api
-# celld local state (Dev mode)
-.celld/dev/
-# Node.js
-node_modules/
-package-lock.json
-# OS
-.DS_Store
-Thumbs.db
+# Test files
+test-*.ts
+test-*.mjs
+debug-*.mjs
+test-conflict.ts
+test-exports.mjs
+test-full.ts
+test-gproxy-agent.ts
+test-min.ts
+test-new-api*.ts
+test-no-th.ts
+test-no-toolkit.ts
+test-one-by-one.ts
+test-openrouter*.ts
+test-plain.ts
+test-proper.ts
+test-providing-layers.ts
+test-redacted.ts
+test-request.ts
+test-schemas.ts
+test-th.ts
+test-specific-model.ts
+test-string-output.ts
+test-with-merge.ts
+test-with-scope.ts
+test-without-*.ts
+test-celld.ts
+test-first.ts
+test-formats.ts
+test-http-last.ts
+test-isolation.ts
+test-layers.ts
+test-manual.ts
+test-minimal.ts
+test-models.ts
+test-no-provide.ts
+test-no-shared.ts
+test-no-tools.ts
+test-doc-examples.ts
+
+# Runtime files
+.runtime/
+*.log
+*.tmp
+
+# Local artifacts
+sec-cell/
+.celld/
