@@ -1,8 +1,8 @@
-import { Effect, Schema } from "effect";
-import { Tool, Toolkit } from "effect/unstable/ai";
-import * as fs from "fs";
-import { join } from "path";
-import { spawn } from "child_process";
+import { Effect, Schema } from "effect"
+import { Tool, Toolkit } from "effect/unstable/ai"
+import * as fs from "fs"
+import { join } from "path"
+import { spawn } from "child_process"
 
 // ---------------------------------------------------------------------------
 // Schema 定义
@@ -73,7 +73,7 @@ export const ReadTool = Tool.make("read", {
   success: ReadSuccess,
   failure: ReadError,
   failureMode: "error",
-});
+})
 
 export const BashTool = Tool.make("bash", {
   description: "Execute bash command",
@@ -81,7 +81,7 @@ export const BashTool = Tool.make("bash", {
   success: BashSuccess,
   failure: BashError,
   failureMode: "error",
-});
+})
 
 export const EditTool = Tool.make("edit", {
   description: "Edit file: search for old string and replace with new string",
@@ -89,7 +89,7 @@ export const EditTool = Tool.make("edit", {
   success: EditSuccess,
   failure: EditError,
   failureMode: "error",
-});
+})
 
 export const WebSearchTool = Tool.make("websearch", {
   description: "Search the web using DuckDuckGo",
@@ -97,13 +97,13 @@ export const WebSearchTool = Tool.make("websearch", {
   success: WebSearchSuccess,
   failure: WebSearchError,
   failureMode: "error",
-});
+})
 
 // ---------------------------------------------------------------------------
 // Toolkit 组合
 // ---------------------------------------------------------------------------
 
-export const EffectToolkit = Toolkit.make(ReadTool, BashTool, EditTool, WebSearchTool);
+export const EffectToolkit = Toolkit.make(ReadTool, BashTool, EditTool, WebSearchTool)
 
 // ---------------------------------------------------------------------------
 // Layer (工具实现)
@@ -113,18 +113,18 @@ export const EffectToolkitLayer = EffectToolkit.toLayer({
   read: ({ path: filePath, offset, limit }) =>
     Effect.gen(function* () {
       try {
-        const resolved = join(filePath);
-        const content = fs.readFileSync(resolved, "utf-8");
-        const lines = content.split("\n");
-        const start = offset ?? 0;
-        const end = limit ? start + limit : lines.length;
+        const resolved = join(filePath)
+        const content = fs.readFileSync(resolved, "utf-8")
+        const lines = content.split("\n")
+        const start = offset ?? 0
+        const end = limit ? start + limit : lines.length
         return {
           content: lines.slice(start, end).join("\n"),
-        };
+        }
       } catch (e) {
         return yield* Effect.fail(new ReadError({
           message: e instanceof Error ? e.message : String(e),
-        }));
+        }))
       }
     }),
 
@@ -133,38 +133,38 @@ export const EffectToolkitLayer = EffectToolkit.toLayer({
       new Promise((resolve) => {
         const proc = spawn("bash", ["-c", command], {
           cwd: cwd ?? process.cwd(),
-        });
-        let stdout = "";
-        let stderr = "";
-        proc.stdout?.on("data", (d) => { stdout += d.toString(); });
-        proc.stderr?.on("data", (d) => { stderr += d.toString(); });
+        })
+        let stdout = ""
+        let stderr = ""
+        proc.stdout?.on("data", (d) => { stdout += d.toString() })
+        proc.stderr?.on("data", (d) => { stderr += d.toString() })
         proc.on("close", (code) => {
-          resolve({ stdout, stderr, exitCode: code ?? 0 });
-        });
+          resolve({ stdout, stderr, exitCode: code ?? 0 })
+        })
         proc.on("error", (e) => {
-          resolve({ stdout: "", stderr: e.message, exitCode: 1 });
-        });
+          resolve({ stdout: "", stderr: e.message, exitCode: 1 })
+        })
       })
     ),
 
   edit: ({ path: filePath, old, newContent }) =>
     Effect.gen(function* () {
       try {
-        const resolved = join(filePath);
-        const content = fs.readFileSync(resolved, "utf-8");
-        const idx = content.indexOf(old);
+        const resolved = join(filePath)
+        const content = fs.readFileSync(resolved, "utf-8")
+        const idx = content.indexOf(old)
         if (idx === -1) {
           return yield* Effect.fail(new EditError({
-            message: `Old content not found in ${filePath}`,
-          }));
+            message: `Old content not found in ${filePath}`
+          }))
         }
-        const updated = content.slice(0, idx) + newContent + content.slice(idx + old.length);
-        fs.writeFileSync(resolved, updated, "utf-8");
-        return { path: filePath };
+        const updated = content.slice(0, idx) + newContent + content.slice(idx + old.length)
+        fs.writeFileSync(resolved, updated, "utf-8")
+        return { path: filePath }
       } catch (e) {
         return yield* Effect.fail(new EditError({
           message: e instanceof Error ? e.message : String(e),
-        }));
+        }))
       }
     }),
 
@@ -172,27 +172,25 @@ export const EffectToolkitLayer = EffectToolkit.toLayer({
     Effect.promise(() =>
       (async () => {
         try {
-          const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`;
-          const resp = await fetch(url);
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const data = await resp.json() as { results?: Array<{ text?: string; URL?: string }> };
+          const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`
+          const resp = await fetch(url)
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+          const data = await resp.json()
           return {
             results: (data.results ?? []).slice(0, 10).map((r) => ({
               text: r.text ?? "",
               url: r.URL ?? "",
             })),
-          };
+          }
         } catch (e) {
           throw new WebSearchError({
             message: e instanceof Error ? e.message : String(e),
-          });
+          })
         }
       })()
     ),
-});
+})
 
 // ---------------------------------------------------------------------------
 // Export
 // ---------------------------------------------------------------------------
-
-export { ReadTool, BashTool, EditTool, WebSearchTool, EffectToolkit, EffectToolkitLayer };
